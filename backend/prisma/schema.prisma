@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hashed password for local auth
+  name      String
+  role      String   @default("user")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  trips     Trip[]
+
+  @@map("users")
+}
+
+model City {
+  id         String     @id @default(uuid())
+  name       String
+  country    String
+  costIndex  Int        @map("cost_index")
+  popularity Int        @default(0)
+  imageUrl   String?    @map("image_url")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  tripStops  TripStop[]
+
+  @@index([name])
+  @@index([country])
+  @@index([popularity])
+  @@map("cities")
+}
+
+model Activity {
+  id             String         @id @default(uuid())
+  name           String
+  description    String?
+  category       String
+  cost           Float
+  duration       Int?
+  imageUrl       String?        @map("image_url")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  tripActivities TripActivity[]
+
+  @@index([category])
+  @@index([cost])
+  @@map("activities")
+}
+
+model Trip {
+  id          String      @id @default(uuid())
+  userId      String      @map("user_id")
+  name        String
+  description String?
+  startDate   DateTime    @map("start_date")
+  endDate     DateTime    @map("end_date")
+  coverImage  String?     @map("cover_image")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  budgets     Budget[]
+  shares      TripShare[]
+  stops       TripStop[]
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([startDate])
+  @@map("trips")
+}
+
+model TripStop {
+  id         String         @id @default(uuid())
+  tripId     String         @map("trip_id")
+  cityId     String         @map("city_id")
+  startDate  DateTime       @map("start_date")
+  endDate    DateTime       @map("end_date")
+  order      Int            @default(0)
+  notes      String?
+  createdAt  DateTime       @default(now()) @map("created_at")
+  activities TripActivity[]
+  city       City           @relation(fields: [cityId], references: [id])
+  trip       Trip           @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([cityId])
+  @@map("trip_stops")
+}
+
+model TripActivity {
+  id         String   @id @default(uuid())
+  stopId     String   @map("stop_id")
+  activityId String   @map("activity_id")
+  date       DateTime
+  time       String?
+  order      Int      @default(0)
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  activity   Activity @relation(fields: [activityId], references: [id])
+  stop       TripStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@index([stopId])
+  @@index([activityId])
+  @@index([date])
+  @@map("trip_activities")
+}
+
+model Budget {
+  id          String   @id @default(uuid())
+  tripId      String   @map("trip_id")
+  category    String
+  amount      Float
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([category])
+  @@map("budgets")
+}
+
+model TripShare {
+  id         String    @id @default(uuid())
+  tripId     String    @map("trip_id")
+  shareToken String    @unique @map("share_token")
+  isPublic   Boolean   @default(true) @map("is_public")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  expiresAt  DateTime? @map("expires_at")
+  trip       Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([shareToken])
+  @@index([tripId])
+  @@map("trip_shares")
+}
